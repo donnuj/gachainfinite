@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Infinite Gacha - Dungeons e Missões</title>
+<style>
+  body {
+    background: #121212;
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 20px;
+  }
+  h1, h2 {
+    text-align: center;
+  }
+  .container {
+    max-width: 1200px;
+    margin: auto;
+  }
+  .flex-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .hero-card, .item-card, .dungeon-card {
+    background: #1f1f1f;
+    border-radius: 10px;
+    padding: 15px;
+    width: 280px;
+    box-shadow: 0 0 8px #ff8800aa;
+  }
+  .hero-card h3, .item-card h3, .dungeon-card h3 {
+    margin-top: 0;
+    color: #ff8800;
+  }
+  .stats {
+    margin-top: 10px;
+  }
+  .stats div {
+    margin-bottom: 5px;
+  }
+  button {
+    background: #ff8800;
+    border: none;
+    padding: 10px 15px;
+    margin-top: 10px;
+    border-radius: 6px;
+    color: #121212;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    transition: background 0.3s;
+  }
+  button:hover {
+    background: #ffaa33;
+  }
+  select {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+    font-size: 1rem;
+  }
+  label {
+    font-weight: bold;
+    display: block;
+    margin-top: 15px;
+  }
+  .equipment-slot {
+    margin-top: 10px;
+    border: 1px solid #ff8800;
+    padding: 8px;
+    border-radius: 6px;
+    background: #2a2a2a;
+  }
+  .equipment-slot strong {
+    color: #ffaa00;
+  }
+  #mapa-dungeons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 30px;
+  }
+  .dungeon-card {
+    cursor: pointer;
+    border: 2px solid #ff8800;
+    transition: transform 0.2s;
+  }
+  .dungeon-card:hover {
+    transform: scale(1.05);
+  }
+  #missao-area {
+    margin-top: 20px;
+    background: #222;
+    padding: 20px;
+    border-radius: 10px;
+  }
+  #missao-result {
+    margin-top: 10px;
+    padding: 10px;
+    background: #333;
+    border-radius: 6px;
+    min-height: 80px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Infinite Gacha - Dungeons e Missões</h1>
+
+  <h2>Seus Heróis</h2>
+  <div id="herois" class="flex-row"></div>
+
+  <h2>Inventário de Equipamentos</h2>
+  <div id="inventario" class="flex-row"></div>
+
+  <h2>Mapa de Dungeons</h2>
+  <div id="mapa-dungeons"></div>
+
+  <div id="missao-area" style="display:none;">
+    <h3 id="missao-nome"></h3>
+    <p><strong>Dificuldade:</strong> <span id="missao-dificuldade"></span></p>
+    <p><strong>Tamanho:</strong> <span id="missao-tamanho"></span></p>
+    <p><strong>Tempo Estimado:</strong> <span id="missao-tempo"></span> minutos</p>
+    <button id="botao-iniciar-missao">Iniciar Missão</button>
+    <button id="botao-voltar-mapa" style="margin-top: 10px;">Voltar ao Mapa</button>
+    <div id="missao-result"></div>
+  </div>
+</div>
+
+<script>
+  // Dados iniciais heróis e equipamentos (mesmo do passo anterior)
+  let herois = JSON.parse(localStorage.getItem('herois')) || [
+    { id: 1, nome: 'Aelric Ferreiro', classe: 'Ferreiro', raridade: 'Raro', nivel: 5, xp: 40, equipamento: {} },
+    { id: 2, nome: 'Lyra Arqueiro', classe: 'Arqueiro', raridade: 'Épico', nivel: 8, xp: 90, equipamento: {} }
+  ];
+  const equipamentos = [
+    { id: 101, nome: 'Espada Longa', tipo: 'arma', raridade: 'Raro', ataque: 15, defesa: 0, magia: 0, velocidade: 0 },
+    { id: 102, nome: 'Arco Composto', tipo: 'arma', raridade: 'Épico', ataque: 20, defesa: 0, magia: 0, velocidade: 2 },
+    { id: 103, nome: 'Adaga Curta', tipo: 'arma', raridade: 'Comum', ataque: 8, defesa: 0, magia: 0, velocidade: 5 },
+    { id: 201, nome: 'Escudo de Ferro', tipo: 'escudo', raridade: 'Raro', ataque: 0, defesa: 20, magia: 0, velocidade: -1 },
+    { id: 202, nome: 'Escudo Mágico', tipo: 'escudo', raridade: 'Épico', ataque: 0, defesa: 25, magia: 5, velocidade: 0 },
+    { id: 301, nome: 'Armadura de Couro', tipo: 'armadura', raridade: 'Comum', ataque: 0, defesa: 15, magia: 0, velocidade: 1 },
+    { id: 302, nome: 'Armadura de Placas', tipo: 'armadura', raridade: 'Raro', ataque: 0, defesa: 30, magia: 0, velocidade: -2 },
+    { id: 401, nome: 'Anel do Fogo', tipo: 'anel', raridade: 'Épico', ataque: 5, defesa: 0, magia: 10, velocidade: 0 },
+    { id: 402, nome: 'Colar da Velocidade', tipo: 'colar', raridade: 'Raro', ataque: 0, defesa: 0, magia: 0, velocidade: 5 },
+    { id: 403, nome: 'Brinco da Sabedoria', tipo: 'brinco', raridade: 'Lendário', ataque: 0, defesa: 0, magia: 20, velocidade: 0 }
+  ];
+
+  // Dungeons (mapa) - nome, dificuldade, tamanho, tempo(min), lvl recomendado
+  const dungeons = [
+    { id: 1, nome: 'Caverna Sombria', dificuldade: 'Fácil', tamanho: 'Pequena', tempo: 5, lvlRecom: 3 },
+    { id: 2, nome: 'Floresta dos Espíritos', dificuldade: 'Médio', tamanho: 'Média', tempo: 10, lvlRecom: 6 },
+    { id: 3, nome: 'Ruínas Antigas', dificuldade: 'Difícil', tamanho: 'Grande', tempo: 20, lvlRecom: 9 },
+    { id: 4, nome: 'Tumba Esquecida', dificuldade: 'Fácil', tamanho: 'Pequena', tempo: 6, lvlRecom: 4 },
+    { id: 5, nome: 'Fortaleza Abandonada', dificuldade: 'Médio', tamanho: 'Média', tempo: 12, lvlRecom: 7 },
+    { id: 6, nome: 'Templo Proibido', dificuldade: 'Difícil', tamanho: 'Grande', tempo: 25, lvlRecom: 10 },
+    { id: 7, nome: 'Caverna de Cristal', dificuldade: 'Médio', tamanho: 'Pequena', tempo: 8, lvlRecom: 6 },
+    { id: 8, nome: 'Bosque Sombrio', dificuldade: 'Fácil', tamanho: 'Pequena', tempo: 4, lvlRecom: 2 },
+    { id: 9, nome: 'Abismo Profundo', dificuldade: 'Difícil', tamanho: 'Grande', tempo: 30, lvlRecom: 11 }
+  ];
+
+  let heroiSelecionado = null;
+  let dungeonSelecionada = null;
+
+  function salvar() {
+    localStorage.setItem('herois', JSON.stringify(herois));
+  }
+
+  function calcularStats(heroi) {
+    let ataque = heroi.nivel * 2;
+    let defesa = heroi.nivel * 1.5;
+    let magia = heroi.nivel * 1;
+    let velocidade = heroi.nivel * 0.5;
+
+    if (heroi.equipamento) {
+      Object.values(heroi.equipamento).forEach(item => {
+        if(item) {
+          ataque += item.ataque || 0;
+          defesa += item.defesa || 0;
+          magia += item.magia || 0;
+          velocidade += item.velocidade || 0;
+        }
+      });
+    }
+
+    return { ataque, defesa, magia, velocidade };
+  }
+
+  function mostrarHeróis() {
+    const cont = document.getElementById('herois');
+    cont.innerHTML = '';
+    herois.forEach((h, idx) => {
+      const stats = calcularStats(h);
+      cont.innerHTML += `
+        <div class="hero-card">
+          <h3>${h.nome} (${h.raridade})</h3>
+          <div><strong>Classe:</strong> ${h.classe}</div>
+          <div><strong>Nível:</strong> ${h.nivel} (XP: ${h.xp}/100)</div>
+          <div class="stats">
+            <div>⚔ Ataque: ${stats.ataque.toFixed(1)}</div>
+            <div>🛡 Defesa: ${stats.defesa.toFixed(1)}</div>
+            <div>✨ Magia: ${stats.magia.toFixed(1)}</div>
+            <div>⚡ Velocidade: ${stats.velocidade.toFixed(1)}</div>
+          </div>
+          <div class="equipment-slot"><strong>Arma:</strong> ${h.equipamento.arma ? h.equipamento.arma.nome : 'Nenhuma'}</div>
+          <div class="equipment-slot"><strong>Escudo:</strong> ${h.equipamento.escudo ? h.equipamento.escudo.nome : 'Nenhum'}</div>
+          <div class="equipment-slot"><strong>Armadura:</strong> ${h.equipamento.armadura ? h.equipamento.armadura.nome : 'Nenhuma'}</div>
+          <div class="equipment-slot"><strong>Acessório 1:</strong> ${h.equipamento.anel ? h.equipamento.anel.nome : 'Nenhum'}</div>
+          <div class="equipment-slot"><strong>Acessório 2:</strong> ${h.equipamento.colar ? h.equipamento.colar.nome : 'Nenhum'}</div>
+          <div class="equipment-slot"><strong>Acessório 3:</strong> ${h.equipamento.brinco ? h.equipamento.brinco.nome : 'Nenhum'}</div>
+          <button onclick="selecionarHeroi(${idx})">Equipar Itens</button>
+        </div>
+      `;
+    });
+  }
+
+  function mostrarInventario() {
+    const cont = document.getElementById('inventario');
+    cont.innerHTML = '';
+
+    equipamentos.forEach(item => {
+      cont.innerHTML += `
+        <div class="item-card">
+          <h3>${item.nome} (${item.raridade})</h3>
+          <div><strong>Tipo:</strong> ${item.tipo}</div>
+          <div>⚔ Ataque: ${item.ataque}</div>
+          <div>🛡 Defesa: ${item.defesa}</div>
+          <div>✨ Magia: ${item.magia}</div>
+          <div>⚡ Velocidade: ${item.velocidade}</div>
+          <button onclick="equiparItem(${item.id})">Equipar</button>
+        </div>
+      `;
+    });
+  }
+
+  function selecionarHeroi(idx) {
+    heroiSelecionado = herois[idx];
+    mostrarInventario();
+  }
+
+  function equiparItem(itemId) {
+    if(!heroiSelecionado) return alert("Selecione um herói antes");
+    const item = equipamentos.find(i => i.id === itemId);
+    if(!item) return;
+
+    if (item.tipo === "arma") heroiSelecionado.equipamento.arma = item;
+    else if (item.tipo === "escudo") heroiSelecionado.equipamento.escudo = item;
+    else if (item.tipo === "armadura") heroiSelecionado.equipamento.armadura = item;
+    else if (item.tipo === "anel") heroiSelecionado.equipamento.anel = item;
+    else if (item.tipo === "colar") heroiSelecionado.equipamento.colar = item;
+    else if (item.tipo === "brinco") heroiSelecionado.equipamento.brinco = item;
+
+    salvar();
+    mostrarHeróis();
+    mostrarInventario();
+  }
+
+  // Mostrar mapa das dungeons
+  function mostrarMapa() {
+    const mapa = document.getElementById('mapa-dungeons');
+    mapa.innerHTML = '';
+    dungeons.forEach(d => {
+      const card = document.createElement('div');
+      card.className = 'dungeon-card';
+      card.innerHTML = `
+        <h3>${d.nome}</h3>
+        <p><strong>Dificuldade:</strong> ${d.dificuldade}</p>
+        <p><strong>Tamanho:</strong> ${d.tamanho}</p>
+        <p><strong>Tempo:</strong> ${d.tempo} min</p>
+        <p><strong>Nível Recomendado:</strong> ${d.lvlRecom}</p>
+      `;
+      card.onclick = () => abrirMissao(d);
+      mapa.appendChild(card);
+    });
+  }
+
+  // Abrir missão selecionada
+  function abrirMissao(dungeon) {
+    dungeonSelecionada = dungeon;
+    document.getElementById('missao-nome').innerText = dungeon.nome;
+    document.getElementById('missao-dificuldade').innerText = dungeon.dificuldade;
+    document.getElementById('missao-tamanho').innerText = dungeon.tamanho;
+    document.getElementById('missao-tempo').innerText = dungeon.tempo;
+    document.getElementById('missao-area').style.display = 'block';
+    document.getElementById('mapa-dungeons').style.display = 'none';
+    document.getElementById('missao-result').innerHTML = '';
+  }
+
+  // Voltar ao mapa
+  document.getElementById('botao-voltar-mapa').onclick = () => {
+    document.getElementById('missao-area').style.display = 'none';
+    document.getElementById('mapa-dungeons').style.display = 'grid';
+  };
+
+  // Função simular missão
+  function iniciarMissao() {
+    if (!dungeonSelecionada) return;
+
+    // Calcula força total do grupo (soma dos heróis)
+    const grupo = herois;
+    const forcaGrupo = grupo.reduce((acc, h) => {
+      const s = calcularStats(h);
+      return acc + s.ataque + s.defesa + s.magia + s.velocidade;
+    }, 0);
+
+    // Define dificuldade numérica (baseado na dificuldade da dungeon)
+    let dificuldadeValor = 0;
+    switch(dungeonSelecionada.dificuldade) {
+      case 'Fácil': dificuldadeValor = 50; break;
+      case 'Médio': dificuldadeValor = 100; break;
+      case 'Difícil': dificuldadeValor = 150; break;
+    }
+
+    const missaoResult = document.getElementById('missao-result');
+
+    // Simular resultado com aleatório e força
+    const chanceVitoria = forcaGrupo / (forcaGrupo + dificuldadeValor);
+    const venceu = Math.random() < chanceVitoria;
+
+    if (venceu) {
+      // Recompensa XP e chance de item
+      grupo.forEach(h => {
+        h.xp += 20 + Math.floor(Math.random() * 15);
+        if(h.xp >= 100) { h.nivel++; h.xp -= 100; }
+      });
+      salvar();
+      mostrarHeróis();
+
+      // Chance simples de recompensa
+      const chanceItem = 0.5;
+      let itemDrop = null;
+      if (Math.random() < chanceItem) {
+        itemDrop = equipamentos[Math.floor(Math.random()*equipamentos.length)];
+      }
+
+      missaoResult.innerHTML = `<p>✅ Missão concluída com sucesso! XP ganho para os heróis.</p>`;
+      if(itemDrop) {
+        missaoResult.innerHTML += `<p>🎁 Você encontrou um item: <strong>${itemDrop.nome}</strong>!</p>`;
+      }
+    } else {
+      missaoResult.innerHTML = `<p>❌ Os heróis falharam na missão. Tente novamente com equipamentos melhores.</p>`;
+    }
+  }
+
+  document.getElementById('botao-iniciar-missao').onclick = iniciarMissao;
+
+  mostrarHeróis();
+  mostrarInventario();
+  mostrarMapa();
+
+</script>
+</body>
+</html>
